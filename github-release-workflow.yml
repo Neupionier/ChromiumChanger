@@ -1,0 +1,30 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Set version from tag
+        shell: pwsh
+        run: |
+          $v = "${{ github.ref_name }}".TrimStart("v")
+          (Get-Content chromiumchanger/__init__.py) -replace '__version__ = ".*"', "__version__ = `"$v`"" | Set-Content chromiumchanger/__init__.py
+      - name: Build exe
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip pyinstaller pillow
+          python -m PyInstaller --noconfirm --clean --windowed --uac-admin --name ChromiumChanger --icon assets/app.ico --add-data "assets;assets" app_entry.py
+          Compress-Archive -Path dist/ChromiumChanger/* -DestinationPath dist/ChromiumChanger-win64.zip -Force
+      - name: Publish release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" dist/ChromiumChanger-win64.zip --title "${{ github.ref_name }}" --generate-notes
