@@ -16,7 +16,7 @@ from pathlib import Path
 
 from . import __version__, extsources, settings
 
-UPDATE_REPO = ""          # "owner/repo" - fill in after creating the GitHub repository (or set CC_UPDATE_REPO)
+UPDATE_REPO = "Neupionier/ChromiumChanger"   # GitHub "owner/repo" that publishes the releases
 ASSET = "ChromiumChanger-win64.zip"
 
 
