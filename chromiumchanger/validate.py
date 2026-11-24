@@ -13,7 +13,16 @@ BLOCKED_FLAGS = {
     "--unsafely-treat-insecure-origin-as-secure", "--allow-file-access-from-files",
     "--enable-automation", "--headless", "--utility-cmd-prefix", "--renderer-cmd-prefix",
     "--gpu-launcher", "--ppapi-plugin-launcher", "--no-zygote",
+    "--browser-subprocess-path", "--proxy-auto-detect", "--proxy-bypass-list", "--host-rules",
+    "--remote-debugging-address", "--js-flags", "--ssl-key-log-file", "--log-net-log",
+    "--ignore-certificate-errors-spki-list", "--reduce-security-for-testing", "--test-type",
+    "--crash-server-url", "--allow-sandbox-debugging", "--disable-seccomp-filter-sandbox",
+    "--auth-server-allowlist", "--auth-negotiate-delegate-allowlist", "--extension-content-verification",
+    "--disable-extensions-file-access-check", "--allow-http-screen-capture", "--enable-nacl",
 }
+# --disable-features / --enable-features values that weaken site isolation or certificate checks
+RISKY_FEATURES = re.compile(r"isolateorigins|siteperprocess|site-per-process|sitesperprocess|"
+                            r"certificatetransparency|sslkeylog|strictoriginisolation", re.I)
 
 MATCH_RE = re.compile(r"^(<all_urls>|(https?|\*)://(\*|\*\.[A-Za-z0-9.-]+|[A-Za-z0-9.-]+)/.*)$")
 DOMAIN_RE = re.compile(r"^[A-Za-z0-9*.\-]+(/[A-Za-z0-9_\-./*?=&%]*)?$")
@@ -31,6 +40,10 @@ RISKY_JS = [
     (r"<\s*script", "injects a script tag"),
     (r"\.src\s*=\s*['\"]https?:", "loads an external resource"),
     (r"importScripts|import\s*\(", "dynamic import"),
+    (r"\b(?:window|globalThis|self|top|parent|document)\s*\[", "dynamic property access (may hide API calls)"),
+    (r"\batob\s*\(|fromCharCode|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}", "encoded or obfuscated strings"),
+    (r"set(?:Timeout|Interval)\s*\(\s*['\"`]", "runs code from a string"),
+    (r"\[\s*['\"][A-Za-z_]+['\"]\s*\+", "builds a name from string parts"),
     (r"type\s*=\s*['\"]password['\"]|input\[type=.?password", "accesses password fields"),
 ]
 RISKY_CSS = [
@@ -75,8 +88,11 @@ def scan_css(code):
 def check_flag(flag):
     if not isinstance(flag, str) or not FLAG_RE.match(flag):
         return False, "invalid format"
-    if flag.split("=")[0] in BLOCKED_FLAGS:
+    name, _, value = flag.partition("=")
+    if name in BLOCKED_FLAGS:
         return False, "flag blocked for security reasons"
+    if name in ("--disable-features", "--enable-features", "--disable-blink-features") and RISKY_FEATURES.search(value):
+        return False, "feature switch weakens browser security"
     return True, ""
 
 
@@ -139,6 +155,8 @@ def sanitize_patch(patch):
             issues.append(f"Ignored setting that is not allowed: {key}")
             continue
         try:
+            if key == "appearance.custom_css" and isinstance(val, str) and scan_css(val):
+                raise ValueError("appearance.custom_css: external resources (@import / url(http...)) are not allowed in AI plans")
             ok[key] = clean_setting(key, val)
         except ValueError as e:
             issues.append(str(e))
@@ -182,14 +200,24 @@ def sanitize_plan(plan):
     patch, iss = sanitize_patch(plan.get("settings_patch") or {})
     issues += iss
     flags = []
-    for f in plan.get("flags") or []:
+    raw_flags = plan.get("flags")
+    if not isinstance(raw_flags, list):
+        if raw_flags:
+            issues.append("flags must be a list")
+        raw_flags = []
+    for f in raw_flags[:50]:
         good, why = check_flag(f)
         if good:
             flags.append(f)
         else:
             issues.append(f"Flag rejected {f!r}: {why}")
     mods = []
-    for m in (plan.get("mods") or [])[:10]:
+    raw_mods = plan.get("mods")
+    if not isinstance(raw_mods, list):
+        if raw_mods:
+            issues.append("mods must be a list")
+        raw_mods = []
+    for m in raw_mods[:10]:
         try:
             cm, w = sanitize_mod(m)
             mods.append({**cm, "warnings": w})
@@ -197,7 +225,8 @@ def sanitize_plan(plan):
         except ValueError as e:
             issues.append(f"Mod rejected: {e}")
     recs = []
-    for r in (plan.get("recommended_extensions") or [])[:10]:
+    raw_recs = plan.get("recommended_extensions")
+    for r in (raw_recs if isinstance(raw_recs, list) else [])[:10]:
         if isinstance(r, dict) and r.get("name"):
             recs.append({"name": str(r["name"])[:80], "reason": str(r.get("reason", ""))[:300]})
     return {
