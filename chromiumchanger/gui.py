@@ -693,7 +693,7 @@ class App:
         self.plan_text.tag_configure("h", foreground=ACC)
         bar = ttk.Frame(f)
         bar.pack(fill="x", pady=(6, 0))
-        self.plan_apply = ttk.Button(bar, text="Approve and apply", style="Accent.TButton", command=self.approve_plan, state="disabled")
+        self.plan_apply = ttk.Button(bar, text="Approve", style="Accent.TButton", command=self.approve_plan, state="disabled")
         self.plan_apply.pack(side="left")
         ttk.Button(bar, text="Discard", command=self.discard_plan).pack(side="left", padx=8)
 
@@ -806,8 +806,7 @@ class App:
         actions.apply_plan(p)
         self.discard_plan()
         self.reload_all()
-        self.log_write("Plan applied.", "ok")
-        self.do_apply()
+        self.log_write("Plan approved and saved. Press 'Apply settings' on the Home tab to use it.", "ok")
 
     def discard_plan(self):
         self.plan = None
