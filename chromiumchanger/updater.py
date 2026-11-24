@@ -86,23 +86,36 @@ def download(info, log=print):
 
 
 def schedule_install(new_folder, log=print):
-    """After this process exits, copy the new files over the app folder and start the app again."""
+    """After every ChromiumChanger.exe has exited, copy the new files over the app folder and start it again.
+
+    The helper script waits for the app to close first; copying while the old exe still runs would leave
+    a half-updated (broken) folder because its DLLs are locked.
+    """
     app = Path(sys.executable).resolve().parent
     exe = app / "ChromiumChanger.exe"
+    tmp = Path(new_folder).parent
     bat = Path(tempfile.gettempdir()) / "chromiumchanger_update.bat"
+    logf = Path(tempfile.gettempdir()) / "chromiumchanger_update.log"
     bat.write_bytes((
         "@echo off\r\n"
-        "set n=0\r\n"
-        ":retry\r\n"
-        "ping -n 3 127.0.0.1 >nul\r\n"
-        f'robocopy "{new_folder}" "{app}" /E /IS /IT /R:2 /W:1 /NFL /NDL /NJH /NJS /NP >nul\r\n'
-        "if %errorlevel% GEQ 8 (\r\n"
-        "  set /a n+=1\r\n"
-        "  if %n% LSS 20 goto retry\r\n"
-        ")\r\n"
+        "set w=0\r\n"
+        ":wait\r\n"
+        'tasklist /FI "IMAGENAME eq ChromiumChanger.exe" 2>nul | find /I "ChromiumChanger.exe" >nul\r\n'
+        "if errorlevel 1 goto copy\r\n"
+        "set /a w+=1\r\n"
+        "if %w% GEQ 90 goto failed\r\n"
+        "ping -n 2 127.0.0.1 >nul\r\n"
+        "goto wait\r\n"
+        ":copy\r\n"
+        "ping -n 2 127.0.0.1 >nul\r\n"
+        f'robocopy "{new_folder}" "{app}" /E /IS /IT /R:5 /W:1 /NFL /NDL /NJH /NJS /NP >"{logf}"\r\n'
+        "if %errorlevel% GEQ 8 goto failed\r\n"
         f'start "" "{exe}"\r\n'
-        f'rmdir /s /q "{Path(new_folder).parent}" 2>nul\r\n'
-        '(goto) 2>nul & del "%~f0"\r\n').encode("ascii", "replace"))
+        f'rmdir /s /q "{tmp}" 2>nul\r\n'
+        '(goto) 2>nul & del "%~f0"\r\n'
+        ":failed\r\n"
+        f'echo Update failed. The new files are in {new_folder} >> "{logf}"\r\n'
+        f'start "" notepad "{logf}"\r\n').encode("ascii", "replace"))
     subprocess.Popen(["cmd", "/c", str(bat)], creationflags=0x08000000 | 0x00000008,
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     log("The update will be installed as soon as the app closes; it restarts automatically.")

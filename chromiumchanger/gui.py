@@ -428,9 +428,10 @@ class App:
     def on_update_downloaded(self, folder, err):
         if err is not None or not folder:
             return
-        updater.schedule_install(folder, self.log_write)
         self.closing = True
-        messagebox.showinfo("Updates", "The app will now restart with the new version.")
+        messagebox.showinfo("Updates", "The update is ready. Click OK: the app closes and restarts with the new version.")
+        localai.stop()
+        updater.schedule_install(folder, lambda m: None)  # only after OK, so the old exe really exits
         self.root.destroy()
 
     def do_remove_browser(self):
