@@ -96,31 +96,43 @@ def schedule_install(new_folder, log=print):
     tmp = Path(new_folder).parent
     bat = Path(tempfile.gettempdir()) / "chromiumchanger_update.bat"
     logf = Path(tempfile.gettempdir()) / "chromiumchanger_update.log"
-    bat.write_bytes((
-        "@echo off\r\n"
-        "set \"SY=%SystemRoot%\\System32\"\r\n"
-        "set w=0\r\n"
-        ":wait\r\n"
-        # a running exe cannot be opened for writing: no tasklist/find (PATH-dependent) needed
-        f'(>>"{exe}" rem) 2>nul && goto copy\r\n'
-        "set /a w+=1\r\n"
-        "if %w% EQU 8 \"%SY%\\taskkill.exe\" /F /IM ChromiumChanger.exe >nul 2>&1\r\n"
-        "if %w% GEQ 40 goto failed\r\n"
-        "\"%SY%\\ping.exe\" -n 2 127.0.0.1 >nul\r\n"
-        "goto wait\r\n"
-        ":copy\r\n"
-        "\"%SY%\\ping.exe\" -n 2 127.0.0.1 >nul\r\n"
-        f'"%SY%\\robocopy.exe" "{new_folder}" "{app}" /E /IS /IT /R:5 /W:1 /NFL /NDL /NJH /NJS /NP >"{logf}"\r\n'
-        "if %errorlevel% GEQ 8 goto failed\r\n"
-        f'start "" "{exe}"\r\n'
-        f'rmdir /s /q "{tmp}" 2>nul\r\n'
-        '(goto) 2>nul & del "%~f0"\r\n'
-        ":failed\r\n"
-        f'echo Update failed. The new files are in {new_folder} >> "{logf}"\r\n'
-        f'start "" notepad "{logf}"\r\n').encode("ascii", "replace"))
-    base = 0x08000000 | 0x00000008 | 0x00000200   # no window, detached, own process group
-    for flags in (base | 0x01000000, base):         # first try to break away from a parent job object,
-        try:                                        # which would kill the helper when the app exits
+    tr = Path(tempfile.gettempdir()) / "chromiumchanger_update_trace.log"
+    lines = [
+        "@echo off",
+        "title ChromiumChanger update",
+        'set "SY=%SystemRoot%\\System32"',
+        f'echo [%time%] helper started > "{tr}"',
+        "set w=0",
+        ":wait",
+        # a running exe cannot be opened for writing, so this only succeeds after the app has exited
+        f'(type nul >>"{exe}") 2>nul && goto copy',
+        "set /a w+=1",
+        f'echo [%time%] waiting for the app to exit (%w%) >> "{tr}"',
+        'if %w% EQU 8 "%SY%\\taskkill.exe" /F /IM ChromiumChanger.exe >nul 2>&1',
+        "if %w% GEQ 40 goto failed",
+        '"%SY%\\ping.exe" -n 2 127.0.0.1 >nul',
+        "goto wait",
+        ":copy",
+        f'echo [%time%] app closed, copying >> "{tr}"',
+        '"%SY%\\ping.exe" -n 2 127.0.0.1 >nul',
+        f'"%SY%\\robocopy.exe" "{new_folder}" "{app}" /E /IS /IT /R:5 /W:1 /NFL /NDL /NJH /NJS /NP >"{logf}"',
+        f'echo [%time%] robocopy exit code %errorlevel% >> "{tr}"',
+        "if %errorlevel% GEQ 8 goto failed",
+        f'echo [%time%] starting the new version >> "{tr}"',
+        f'start "" "{exe}"',
+        f'rmdir /s /q "{tmp}" 2>nul',
+        "exit",
+        ":failed",
+        f'echo [%time%] FAILED >> "{tr}"',
+        f'echo Update failed. The new files are in {new_folder} >> "{logf}"',
+        "echo.",
+        "echo Update failed. Details: %TEMP%\\chromiumchanger_update_trace.log and chromiumchanger_update.log",
+        "pause",
+    ]
+    bat.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii", "replace"))
+    base = 0x00000010 | 0x00000200   # own visible console (so a stuck helper can be seen), own process group
+    for flags in (base | 0x01000000, base):   # try to break away from a parent job object first
+        try:
             subprocess.Popen(["cmd", "/c", str(bat)], creationflags=flags, close_fds=True,
                              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             break
