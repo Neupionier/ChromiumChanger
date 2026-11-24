@@ -129,9 +129,6 @@ def build_theme(s):
             "button_background": lighter,
         }},
     }
-    if build_newtab(s, d, manifest):
-        log("New tab page enabled (search box / clock / shortcuts).")
-
     (d / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return d
 
