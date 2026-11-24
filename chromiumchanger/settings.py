@@ -49,6 +49,8 @@ DEFAULTS = {
     },
     "appearance": {"dark_mode": True, "theme_color": "#1e1e2e", "custom_css": ""},
     "site_rules": {"block": [], "allow": []},
+    "newtab": {"enabled": False, "title": "", "search": True, "clock": True, "clock_24h": True,
+               "shortcuts": []},   # shortcuts: "Name | https://address"
     "developer": {
         "auto_open_devtools": False,
         "insecure_localhost": False,

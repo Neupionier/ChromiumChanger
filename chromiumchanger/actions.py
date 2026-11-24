@@ -1,8 +1,8 @@
 """High-level actions used by the GUI (and CLI)."""
 from . import extsources, mods, settings, validate
 
-MERGE_KEYS = ("brand", "google_removal", "search", "homepage", "adblock",
-              "privacy", "appearance", "site_rules", "developer")
+MERGE_KEYS = ("brand", "google_removal", "search", "homepage", "adblock", "shortcuts",
+              "privacy", "appearance", "site_rules", "newtab", "developer")
 
 
 def _get(d, dotted):

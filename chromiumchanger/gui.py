@@ -44,7 +44,14 @@ FIELDS = [
         ("search.keyword", "text", "Keyword"),
         ("search.url", "text", "Search URL (must contain {searchTerms})"),
         ("search.suggest_url", "text", "Suggestion URL (empty = off)"),
-        ("homepage", "homepage", "Home / new tab page")]),
+        ("homepage", "homepage", "Home page (Home button and start-up page)")]),
+    ("New tab page", [
+        ("newtab.enabled", "bool", "Use the built-in new tab page (search box, clock, shortcuts)"),
+        ("newtab.title", "text", "Greeting / title (optional)"),
+        ("newtab.search", "bool", "Show the search box (uses your default search engine)"),
+        ("newtab.clock", "bool", "Show the clock and date"),
+        ("newtab.clock_24h", "bool", "24-hour clock"),
+        ("newtab.shortcuts", "lines", "Shortcuts, one per line: Name | https://address (max 12)")]),
     ("Shortcuts for the browser", [
         ("shortcuts.desktop", "bool", "Desktop shortcut"),
         ("shortcuts.start_menu", "bool", "Start menu shortcut")]),

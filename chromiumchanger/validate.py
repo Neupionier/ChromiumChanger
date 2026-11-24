@@ -47,7 +47,21 @@ SETTINGS_WHITELIST = {
     "privacy.block_third_party_cookies": bool, "privacy.do_not_track": bool,
     "appearance.dark_mode": bool, "appearance.theme_color": str, "appearance.custom_css": str,
     "site_rules.block": list, "site_rules.allow": list,
+    "newtab.enabled": bool, "newtab.search": bool, "newtab.clock": bool, "newtab.clock_24h": bool,
+    "newtab.title": str, "newtab.shortcuts": list,
 }
+SHORTCUT_NAME_RE = re.compile(r"^[\w .&+\-]{1,24}$")
+
+
+def parse_shortcut(entry):
+    """'Name | https://address' -> (name, url); raises ValueError."""
+    if not isinstance(entry, str) or "|" not in entry:
+        raise ValueError(f"newtab.shortcuts: use 'Name | https://address' ({entry!r})")
+    name, url = (x.strip() for x in entry.split("|", 1))
+    u = urlparse(url)
+    if not SHORTCUT_NAME_RE.match(name) or u.scheme not in ("http", "https") or not u.netloc or len(url) > 500:
+        raise ValueError(f"newtab.shortcuts: invalid entry {entry!r}")
+    return name, url
 
 
 def scan_js(code):
@@ -100,6 +114,11 @@ def clean_setting(key, val):
     elif key in ("brand.name", "search.name", "search.keyword"):
         if not re.match(r"^[\w .\-]{1,40}$", val):
             raise ValueError(f"{key}: disallowed characters")
+    elif key == "newtab.title":
+        if len(val) > 80 or re.search(r"[<>]", val):
+            raise ValueError("newtab.title: at most 80 characters, no < or >")
+    elif key == "newtab.shortcuts":
+        val = ["%s | %s" % parse_shortcut(x) for x in val[:12]]
     elif key in ("site_rules.block", "site_rules.allow"):
         out = []
         for x in val:

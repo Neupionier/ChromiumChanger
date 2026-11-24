@@ -1,4 +1,4 @@
-# ChromiumChanger 0.3 (Windows)
+# ChromiumChanger 0.2 (Windows)
 
 A desktop app that downloads **ungoogled-chromium** and customizes it for you: Google removal, custom name/icon,
 ad blocking, profiles, developer options, and an optional AI assistant. No source patching: it works through
@@ -28,6 +28,14 @@ directly skips the extensions and flags.
 - **Developer tab**: auto-open DevTools, allow localhost certificates, browser log, DevTools experiments,
   minimal cache, one-click internal pages (chrome://inspect, extensions, policy, version...), folder shortcuts.
 - **History**: a snapshot is saved before every change; restore any point.
+
+## New tab page
+
+Settings -> "New tab page" turns on a built-in start page for new tabs: a search box (it uses your default
+search engine), a clock with the date, an optional greeting and up to 12 shortcut tiles (`Name | https://address`).
+It lives in the built-in extension, runs fully offline and sends nothing anywhere. Colors follow your theme color
+and dark mode setting. The AI can switch it on too ("new tab with a clock and a search bar"). Only one extension
+can own the new tab page; incognito windows keep the browser's normal page.
 
 ## Administrator rights
 Policy-based settings (default search engine, homepage, site block/allow lists, WebRTC/cookie/DNT) are written to the
@@ -78,7 +86,13 @@ If a download fails, the built-in blocker is used. Close the browser, press Appl
 4. In the app, Home > "Check for updates" compares the tag with the installed version, downloads the zip, verifies its
    SHA-256, and installs it after the app closes (the app restarts by itself). Only the packaged exe can self-update.
 
+## Code signing
+
+Release builds are signed when the SignPath secrets are set (see `CODE_SIGNING.md`).
+
+Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
 ## License
 
-MIT License (see the LICENSE file in the repository). ChromiumChanger downloads ungoogled-chromium, uBlock Origin Lite
+MIT License (see the LICENSE file). ChromiumChanger downloads ungoogled-chromium, uBlock Origin Lite
 and (optionally) Ollama at run time; they are not part of this repository and keep their own licenses.
