@@ -98,17 +98,19 @@ def schedule_install(new_folder, log=print):
     logf = Path(tempfile.gettempdir()) / "chromiumchanger_update.log"
     bat.write_bytes((
         "@echo off\r\n"
+        "set \"SY=%SystemRoot%\\System32\"\r\n"
         "set w=0\r\n"
         ":wait\r\n"
-        'tasklist /FI "IMAGENAME eq ChromiumChanger.exe" 2>nul | find /I "ChromiumChanger.exe" >nul\r\n'
-        "if errorlevel 1 goto copy\r\n"
+        # a running exe cannot be opened for writing: no tasklist/find (PATH-dependent) needed
+        f'(>>"{exe}" rem) 2>nul && goto copy\r\n'
         "set /a w+=1\r\n"
-        "if %w% GEQ 90 goto failed\r\n"
-        "ping -n 2 127.0.0.1 >nul\r\n"
+        "if %w% EQU 8 \"%SY%\\taskkill.exe\" /F /IM ChromiumChanger.exe >nul 2>&1\r\n"
+        "if %w% GEQ 40 goto failed\r\n"
+        "\"%SY%\\ping.exe\" -n 2 127.0.0.1 >nul\r\n"
         "goto wait\r\n"
         ":copy\r\n"
-        "ping -n 2 127.0.0.1 >nul\r\n"
-        f'robocopy "{new_folder}" "{app}" /E /IS /IT /R:5 /W:1 /NFL /NDL /NJH /NJS /NP >"{logf}"\r\n'
+        "\"%SY%\\ping.exe\" -n 2 127.0.0.1 >nul\r\n"
+        f'"%SY%\\robocopy.exe" "{new_folder}" "{app}" /E /IS /IT /R:5 /W:1 /NFL /NDL /NJH /NJS /NP >"{logf}"\r\n'
         "if %errorlevel% GEQ 8 goto failed\r\n"
         f'start "" "{exe}"\r\n'
         f'rmdir /s /q "{tmp}" 2>nul\r\n'

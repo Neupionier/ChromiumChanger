@@ -432,7 +432,10 @@ class App:
         messagebox.showinfo("Updates", "The update is ready. Click OK: the app closes and restarts with the new version.")
         localai.stop()
         updater.schedule_install(folder, lambda m: None)  # only after OK, so the old exe really exits
-        self.root.destroy()
+        try:
+            self.root.destroy()
+        finally:
+            os._exit(0)  # make sure no leftover thread keeps the exe alive (the updater waits for it)
 
     def do_remove_browser(self):
         if self.busy:
