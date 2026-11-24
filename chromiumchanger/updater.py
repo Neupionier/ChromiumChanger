@@ -56,6 +56,7 @@ def can_self_update():
 
 def download(info, log=print):
     """Download and verify the new version into a temp folder. Returns the folder containing the new exe."""
+    _clean_old()
     work = Path(tempfile.mkdtemp(prefix="cc_update_"))
     zpath = work / ASSET
     log(f"Downloading {info['tag']} ({info['size'] // 1048576} MB)...")
@@ -85,6 +86,27 @@ def download(info, log=print):
     return str(folder)
 
 
+def _oem_encoding():
+    """Code page cmd.exe uses to read a .bat file (so non-ASCII folder names survive)."""
+    try:
+        import ctypes
+        return f"cp{ctypes.windll.kernel32.GetOEMCP()}"
+    except Exception:
+        return "ascii"
+
+
+def _bat(p):
+    """A path for use inside the .bat: a literal % must be doubled there."""
+    return str(p).replace("%", "%%")
+
+
+def _clean_old(keep=None):
+    """Remove leftovers of earlier (failed or finished) update attempts."""
+    for d in Path(tempfile.gettempdir()).glob("cc_update_*"):
+        if keep is None or d != keep:
+            shutil.rmtree(d, ignore_errors=True)
+
+
 def schedule_install(new_folder, log=print):
     """After every ChromiumChanger.exe has exited, copy the new files over the app folder and start it again.
 
@@ -97,6 +119,7 @@ def schedule_install(new_folder, log=print):
     bat = Path(tempfile.gettempdir()) / "chromiumchanger_update.bat"
     logf = Path(tempfile.gettempdir()) / "chromiumchanger_update.log"
     tr = Path(tempfile.gettempdir()) / "chromiumchanger_update_trace.log"
+    exe, new_folder, app, tmp, logf, tr = (_bat(x) for x in (exe, new_folder, app, tmp, logf, tr))
     lines = [
         "@echo off",
         "title ChromiumChanger update",
@@ -115,7 +138,7 @@ def schedule_install(new_folder, log=print):
         ":copy",
         f'echo [%time%] app closed, copying >> "{tr}"',
         '"%SY%\\ping.exe" -n 2 127.0.0.1 >nul',
-        f'"%SY%\\robocopy.exe" "{new_folder}" "{app}" /E /IS /IT /R:5 /W:1 /NFL /NDL /NJH /NJS /NP >"{logf}"',
+        f'"%SY%\\robocopy.exe" "{new_folder}" "{app}" /E /IS /IT /R:3 /W:1 /NFL /NDL /NJH /NJS /NP >"{logf}"',
         f'echo [%time%] robocopy exit code %errorlevel% >> "{tr}"',
         "if %errorlevel% GEQ 8 goto failed",
         f'echo [%time%] starting the new version >> "{tr}"',
@@ -129,7 +152,7 @@ def schedule_install(new_folder, log=print):
         "echo Update failed. Details: %TEMP%\\chromiumchanger_update_trace.log and chromiumchanger_update.log",
         "pause",
     ]
-    bat.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii", "replace"))
+    bat.write_bytes(("\r\n".join(lines) + "\r\n").encode(_oem_encoding(), "replace"))
     base = 0x00000010 | 0x00000200   # own visible console (so a stuck helper can be seen), own process group
     for flags in (base | 0x01000000, base):   # try to break away from a parent job object first
         try:
