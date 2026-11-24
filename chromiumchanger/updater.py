@@ -118,6 +118,12 @@ def schedule_install(new_folder, log=print):
         ":failed\r\n"
         f'echo Update failed. The new files are in {new_folder} >> "{logf}"\r\n'
         f'start "" notepad "{logf}"\r\n').encode("ascii", "replace"))
-    subprocess.Popen(["cmd", "/c", str(bat)], creationflags=0x08000000 | 0x00000008,
-                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    base = 0x08000000 | 0x00000008 | 0x00000200   # no window, detached, own process group
+    for flags in (base | 0x01000000, base):         # first try to break away from a parent job object,
+        try:                                        # which would kill the helper when the app exits
+            subprocess.Popen(["cmd", "/c", str(bat)], creationflags=flags, close_fds=True,
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            break
+        except OSError:
+            continue
     log("The update will be installed as soon as the app closes; it restarts automatically.")
