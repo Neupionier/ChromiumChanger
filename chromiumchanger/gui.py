@@ -237,7 +237,12 @@ class App:
                                ("Developer", self.tab_dev), ("History", self.tab_history)):
             frame = ttk.Frame(self.nb, padding=12)
             self.nb.add(frame, text=f"  {title}  ")
-            builder(frame)
+            if title == "AI":   # long tab: scrollable so the buttons below the prompt are never cut off
+                sf = ScrollFrame(frame)
+                sf.pack(fill="both", expand=True)
+                builder(sf.inner)
+            else:
+                builder(frame)
         self.reload_all()
         root.after(120, self.poll)
 
