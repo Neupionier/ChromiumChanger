@@ -1,4 +1,4 @@
-# ChromiumChanger 0.2 (Windows)
+# ChromiumChanger (Windows)
 
 A desktop app that downloads **ungoogled-chromium** and customizes it for you: Google removal, custom name/icon,
 ad blocking, profiles, developer options, and an optional AI assistant. No source patching: it works through
