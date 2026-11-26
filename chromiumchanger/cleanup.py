@@ -7,7 +7,9 @@ kept, so installing the browser again brings back the same customization.
 """
 import json
 import shutil
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 from . import branding, policies, settings
@@ -36,22 +38,51 @@ def describe():
             "The browser's Desktop and Start menu shortcuts and launcher files"]
 
 
+_failed = []
+
+
+def _stop_browser(log):
+    """Stop browser processes that run from ChromiumChanger's own browser folder (never any other Chrome)."""
+    if sys.platform != "win32":
+        return
+    folder = str(settings.paths()["browser"]).replace("'", "''")
+    cmd = ("Get-Process | Where-Object { $_.Path -and $_.Path -like '" + folder + "\\*' } | "
+           "ForEach-Object { $_.Id; Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }")
+    try:
+        r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", cmd], capture_output=True,
+                           text=True, timeout=60, creationflags=0x08000000)
+        n = len([x for x in r.stdout.split() if x.isdigit()])
+        if n:
+            log(f"Stopped {n} running browser process(es).")
+            time.sleep(2)
+    except Exception as e:
+        log(f"Could not check for running browser processes: {e}")
+
+
 def _rm(path, log):
     path = Path(path)
-    try:
-        if path.is_dir():
-            shutil.rmtree(path)
-        elif path.exists():
-            path.unlink()
-        else:
+    last = None
+    for attempt in range(4):
+        try:
+            if path.is_dir():
+                shutil.rmtree(path)
+            elif path.exists():
+                path.unlink()
+            else:
+                return
+            log(f"Removed {path}")
             return
-        log(f"Removed {path}")
-    except OSError as e:
-        log(f"WARNING: could not remove {path}: {e} (is the browser still running?)")
+        except OSError as e:
+            last = e
+            time.sleep(1.5)
+    _failed.append(str(path))
+    log(f"WARNING: could not remove {path}: {last} (is the browser still running?)")
 
 
 def run(log=print):
     names = _brand_names()          # read before anything is deleted
+    _failed.clear()
+    _stop_browser(log)
     policies.remove(log)
     if sys.platform == "win32":
         for folder in (branding._desktop(), branding._start_menu()):
@@ -69,4 +100,8 @@ def run(log=print):
         for prof in root.iterdir():
             for sub in ("userdata", "ext"):
                 _rm(prof / sub, log)
+    if _failed:
+        log("NOT everything was removed: " + "; ".join(_failed))
+        log("Close the browser (and anything using its folder) and run 'Remove customized browser' again.")
+        raise RuntimeError("Some files could not be removed - see the log above.")
     log("The customized browser was removed. ChromiumChanger and your settings were kept.")
