@@ -4,7 +4,7 @@ import os
 import re
 import urllib.request
 
-from . import settings, validate
+from . import netutil, settings, validate
 
 SYSTEM = """You are the customization planner of "ChromiumChanger", a tool that customizes a Chromium browser.
 The user describes what they want. Reply with ONE JSON object only (no prose, no markdown fences) with this shape:
@@ -38,7 +38,7 @@ Request: "use Brave search" -> {"summary":"Brave Search as the default.","settin
 def _post(url, body, headers, timeout=180):
     req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
                                  headers={"Content-Type": "application/json", **headers})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with netutil.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8"))
 
 

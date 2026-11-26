@@ -1,4 +1,4 @@
-# ChromiumChanger (Windows)
+# ChromiumChanger 0.2 (Windows)
 
 A desktop app that downloads **ungoogled-chromium** and customizes it for you: Google removal, custom name/icon,
 ad blocking, profiles, developer options, and an optional AI assistant. No source patching: it works through
@@ -36,6 +36,14 @@ search engine), a clock with the date, an optional greeting and up to 12 shortcu
 It lives in the built-in extension, runs fully offline and sends nothing anywhere. Colors follow your theme color
 and dark mode setting. The AI can switch it on too ("new tab with a clock and a search bar"). Only one extension
 can own the new tab page; incognito windows keep the browser's normal page.
+
+## Certificate errors (VM / fresh Windows)
+
+If downloads fail with `CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate` (typical on a fresh virtual
+machine whose Windows has not yet fetched its root certificates), the app retries once with the CA bundle shipped in
+`assets/cacert.pem` (Mozilla root certificates taken from the Python `certifi` package, MPL-2.0). Certificate checking is
+never turned off. If it still fails, check the date/time of the machine, security software or a proxy that intercepts HTTPS,
+and run Windows Update.
 
 ## Administrator rights
 Policy-based settings (default search engine, homepage, site block/allow lists, WebRTC/cookie/DNT) are written to the

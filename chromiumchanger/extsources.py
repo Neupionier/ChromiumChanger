@@ -12,7 +12,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-from . import settings
+from . import netutil, settings
 
 SOURCES = {
     "ublock_lite": {
@@ -46,7 +46,7 @@ def root():
 
 
 def _open(url):
-    return urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "ChromiumChanger"}), timeout=60)
+    return netutil.urlopen(urllib.request.Request(url, headers={"User-Agent": "ChromiumChanger"}), timeout=60)
 
 
 def latest(key):

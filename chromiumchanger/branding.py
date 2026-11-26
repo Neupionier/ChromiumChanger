@@ -7,7 +7,7 @@ import sys
 import urllib.request
 from pathlib import Path
 
-from . import settings
+from . import netutil, settings
 
 RCEDIT_URL = "https://github.com/electron/rcedit/releases/latest/download/rcedit-x64.exe"
 
@@ -20,7 +20,7 @@ def _rcedit():
     f = settings.paths()["cache"] / "rcedit-x64.exe"
     if not f.exists():
         req = urllib.request.Request(RCEDIT_URL, headers={"User-Agent": "ChromiumChanger"})
-        with urllib.request.urlopen(req, timeout=60) as r:
+        with netutil.urlopen(req, timeout=60) as r:
             f.write_bytes(r.read())
     return f
 

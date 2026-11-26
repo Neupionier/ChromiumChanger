@@ -7,7 +7,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-from . import settings
+from . import netutil, settings
 
 API = "https://api.github.com/repos/ungoogled-software/ungoogled-chromium-windows/releases/latest"
 
@@ -19,7 +19,7 @@ def _arch():
 
 def _get(url):
     req = urllib.request.Request(url, headers={"User-Agent": "ChromiumChanger"})
-    return urllib.request.urlopen(req, timeout=60)
+    return netutil.urlopen(req, timeout=60)
 
 
 def find_exe():
